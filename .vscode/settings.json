@@ -1,0 +1,7 @@
+{
+  // "Go Live" serves the app folder, so the address is http://127.0.0.1:5500/index.html
+  "liveServer.settings.root": "/CartShare",
+  // Keep generated test files out of the file explorer and search
+  "files.exclude": { "**/node_modules": true },
+  "search.exclude": { "**/node_modules": true, "**/test-results": true }
+}

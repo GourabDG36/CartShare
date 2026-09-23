@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="CartShare: one shared shopping cart for your dorm, office or trip, with an activity log, expense split and printable receipt.">
+<title>CartShare — Shared shopping, sorted out</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<!-- Apply the saved (or system) theme before the page is drawn, so dark
+     mode never flashes white on load. theme.js takes over after this. -->
+<script>
+  (function () {
+    var theme = null;
+    try { theme = localStorage.getItem('cartshare_theme'); } catch (e) {}
+    if (theme !== 'light' && theme !== 'dark') {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo"><span class="logo__mark">[ ]</span> CartShare</div>
+  <div class="header-right">
+    <div class="room-badge" id="room-badge">
+      <span id="room-code-display"></span>
+      <button class="btn btn--small btn--ghost" id="share-room-btn" type="button">Share room</button>
+      <button class="btn btn--small btn--ghost btn--danger-text" id="leave-room-btn" type="button">Leave</button>
+    </div>
+    <button class="btn btn--ghost" id="theme-toggle" type="button" aria-pressed="false">☾ Dark</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ==================== LANDING VIEW ==================== -->
+  <section id="view-landing" class="landing">
+    <div class="landing__copy">
+      <h1>Split the cart, not the friendship.</h1>
+      <p>
+        One shared cart for your dorm, office, or trip — everyone adds what
+        they need, and CartShare tracks who added it, what it costs, and
+        who owes what.
+      </p>
+      <ul class="landing__points">
+        <li>Create a room and share a short code with your group</li>
+        <li>Add items with quantity and price — the cart updates live</li>
+        <li>See a running activity log and a fair expense breakdown</li>
+        <li>Print an itemized receipt when the order's ready</li>
+      </ul>
+    </div>
+
+    <div class="landing__copy">
+      <div class="auth-card">
+        <div class="tabs">
+          <button type="button" id="tab-create" class="is-active">Create room</button>
+          <button type="button" id="tab-join">Join room</button>
+        </div>
+
+        <form id="form-create" novalidate>
+          <div class="field">
+            <label for="create-name">Your name</label>
+            <input type="text" id="create-name" autocomplete="name" placeholder="e.g. Priya">
+            <span class="field-error" id="create-name-error"></span>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Create a new room</button>
+          </div>
+        </form>
+
+        <form id="form-join" hidden novalidate>
+          <p class="invite-banner" id="invite-banner" hidden></p>
+          <div class="field">
+            <label for="join-name">Your name</label>
+            <input type="text" id="join-name" autocomplete="name" placeholder="e.g. Priya">
+            <span class="field-error" id="join-name-error"></span>
+          </div>
+          <div class="field">
+            <label for="join-code">Room code</label>
+            <input type="text" id="join-code" placeholder="K7P2XQ" maxlength="6">
+            <span class="field-error" id="join-code-error"></span>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Join room</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="receipt-preview" aria-hidden="true">
+        <div class="receipt-preview__title">Room K7P2XQ</div>
+        <div class="receipt-preview__sub">3 people · 6 items</div>
+        <div class="receipt-preview__row"><span>Paper towels x2</span><span>$8.50</span></div>
+        <div class="receipt-preview__row"><span>Oat milk</span><span>$4.20</span></div>
+        <div class="receipt-preview__row"><span>Dish soap</span><span>$3.10</span></div>
+        <div class="receipt-preview__total"><span>Total</span><span>$15.80</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== DASHBOARD VIEW ==================== -->
+  <section id="view-dashboard" class="dashboard" hidden>
+
+    <div class="participants-bar">
+      <div>
+        <strong>Participants</strong>
+        <span class="panel__meta" id="participant-count"></span>
+        <div class="participant-list" id="participant-list"></div>
+      </div>
+      <button class="btn" id="print-receipt-btn" type="button">Print receipt</button>
+    </div>
+
+    <div class="dashboard-grid">
+      <!-- Left column: cart -->
+      <div>
+        <div class="panel">
+          <div class="panel__header">
+            <h2 id="item-form-title">Add an item</h2>
+          </div>
+          <form id="form-add-item" class="item-form" novalidate>
+            <div class="field">
+              <label for="item-name">Item</label>
+              <input type="text" id="item-name" placeholder="e.g. Paper towels">
+              <span class="field-error" id="item-name-error"></span>
+            </div>
+            <div class="field">
+              <label for="item-qty">Qty</label>
+              <input type="number" id="item-qty" min="1" step="1" value="1">
+              <span class="field-error" id="item-qty-error"></span>
+            </div>
+            <div class="field">
+              <label for="item-price">Price</label>
+              <input type="number" id="item-price" min="0.01" step="0.01" placeholder="0.00">
+              <span class="field-error" id="item-price-error"></span>
+            </div>
+            <div class="item-form-actions">
+              <button type="submit" class="btn btn--primary" id="item-form-submit">Add to cart</button>
+              <button type="button" class="btn btn--ghost" id="cancel-edit-btn" hidden>Cancel</button>
+            </div>
+          </form>
+
+          <!-- Wrapper lets the table scroll inside its card on very narrow
+               screens instead of making the whole page scroll sideways. -->
+          <div class="table-scroll">
+            <table class="cart-table">
+              <thead>
+                <tr><th>Item</th><th class="cell-num">Qty</th><th class="cell-num">Price</th><th class="cell-num">Total</th><th><span class="visually-hidden">Actions</span></th></tr>
+              </thead>
+              <tbody id="cart-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="cart-empty" hidden>
+            <div class="empty-state__icon" aria-hidden="true">🛒</div>
+            <p>No items yet. Add the first thing your group needs.</p>
+          </div>
+
+          <div class="cart-footer">
+            <div><span class="label">Items</span><span class="value" id="cart-total-count">0</span></div>
+            <div><span class="label">Total</span><span class="value" id="cart-total-value">$0.00</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: activity + expenses -->
+      <div>
+        <div class="panel">
+          <div class="panel__header"><h2>Activity</h2></div>
+          <ul class="activity-list" id="activity-list"></ul>
+          <div class="empty-state" id="activity-empty" hidden>
+            <div class="empty-state__icon" aria-hidden="true">⏱</div>
+            <p>Nothing has happened in this room yet.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__header"><h2>Expense summary</h2></div>
+          <ul class="expense-list" id="expense-list"></ul>
+          <div class="empty-state" id="expense-empty" hidden>
+            <div class="empty-state__icon" aria-hidden="true">📋</div>
+            <p>Add items to see who owes what.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- Confirmation modal, used instead of window.confirm() (which some
+     embedded viewers silently block). -->
+<div id="confirm-modal" class="modal-overlay" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-message">
+    <p id="confirm-modal-message" class="modal__message"></p>
+    <div class="modal__actions">
+      <button id="confirm-modal-cancel" class="btn btn--ghost" type="button">Cancel</button>
+      <button id="confirm-modal-ok" class="btn btn--primary" type="button">Leave room</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share room modal -->
+<div id="share-modal" class="modal-overlay" hidden>
+  <div class="modal modal--share" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+    <div class="modal__header">
+      <h2 id="share-modal-title">Invite to room</h2>
+      <button id="share-modal-close" class="icon-btn" type="button" aria-label="Close">✕</button>
+    </div>
+    <p class="modal__hint">Opening this link shows the join form with room <strong id="share-modal-code"></strong> already filled in.</p>
+
+    <div class="share-link-row">
+      <input id="share-link-input" type="text" readonly aria-label="Room invitation link">
+      <button id="copy-link-btn" class="btn btn--primary btn--small" type="button">Copy link</button>
+    </div>
+
+    <button id="native-share-btn" class="btn btn--small" type="button" hidden>Share via…</button>
+
+    <p class="modal__limitation">
+      Rooms are saved in this browser. To join as another person, open the
+      link in a new tab or window of this same browser. Other devices and
+      other browsers can't see this room.
+    </p>
+  </div>
+</div>
+
+<!-- Printable receipt: hidden on screen, shown only via @media print -->
+<div id="receipt-print"></div>
+
+<script src="js/storage.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/validation.js"></script>
+<script src="js/render.js"></script>
+<script src="js/receipt.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

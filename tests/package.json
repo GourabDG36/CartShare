@@ -1,0 +1,13 @@
+{
+  "name": "cartshare-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated browser tests and screenshot generator for CartShare",
+  "scripts": {
+    "test": "node e2e.js",
+    "screenshots": "node screenshots.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}
