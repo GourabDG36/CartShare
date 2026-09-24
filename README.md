@@ -34,7 +34,7 @@ git init
 git add .
 git commit -m "CartShare: collaborative shopping cart"
 git branch -M main
-git remote add origin https://github.com/<your-username>/<BatchID_FullName_CartShare>.git
+git remote add origin https://github.com/Raymonflg/CartShare.git
 git push -u origin main
 ```
 
